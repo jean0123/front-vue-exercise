@@ -1,49 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Vue Dev Exercise</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
 </head>
+
 <body>
-<div id="app">
-    <div class="w-full h-screen flex items-center justify-center">
-        <div class="grid gap-4 grid-cols-3">
-            <div v-for="(value,key) in values" 
-                 @click="play(key)"
-                 class="border w-48 h-48 flex items-center justify-center text-4xl hover:bg-gray-100 cursor-pointer">
-                {{ value }}
+    <div id="app">
+        <div class="w-full h-screen flex items-center justify-center">
+            <label class="inline-flex items-center mr-8">
+                <input id="checkMachine" @click="target($event)" type="checkbox"
+                    class="checked:bg-blue-600 checked:border-transparent">
+                <span class="ml-2">Vs Marchine</span>
+            </label>
+            <div class="grid gap-4 grid-cols-3">
+                <button v-if="!maquina"
+                    class="border-2 border-red-200 text-3xl text-black-600 col-span-3 hover:bg-red-100 text-opacity-100 cursor-pointer focus:outline-none"
+                    @click="playMachine(false, true)">
+                    Machine's turn
+                </button>
+                <div v-for="(value, key) in values" @click="playMachine(key, checked)"
+                    class="border w-48 h-48 sm:w-72 sm:h-96 lg:w-48 lg:h-48 flex items-center justify-center text-4xl hover:bg-gray-100 cursor-pointer">
+                    <img v-if="value" class="object-cover h-full w-full ..." :src="value">
+                </div>
+                <button
+                    class="border-2 border-green-200 text-4xl text-yellow-600 col-span-3 hover:bg-green-100 text-opacity-100 cursor-pointer focus:outline-none"
+                    @click="reset">
+                    Reset
+                </button>
+            </div>
+        </div>
+        <div v-if="modal" class="fixed z-10 inset-0 overflow-y-auto">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+                    role="dialog" aria-modal="true" aria-labelledby="modal-headline">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div
+                                class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10">
+                                <svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
+                                    {{ tituloModal}}
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500">
+                                        {{ descripModal }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" @click="toggleModal"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            JUGAR
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
-<script>
-    var app = new Vue({
-        el: '#app',
-        data: () => ({
-            values: {
-                1: '',
-                2: '',
-                3: '',
-                4: '',
-                5: '',
-                6: '',
-                7: '',
-                8: '',
-                9: '',
-            },
-            current: 'X'
-        }),
-        methods:{
-            play(key){
-                if(! this.values[key]) {
-                    this.values[key] = this.current
-                    this.current  = (this.current === 'X' ? 'O' : 'X')
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: () => ({
+                values: {
+                    1: '',
+                    2: '',
+                    3: '',
+                    4: '',
+                    5: '',
+                    6: '',
+                    7: '',
+                    8: '',
+                    9: '',
+                },
+                current: 'X',
+                modal: false,
+                audio2: new Audio('https://s3-us-west-2.amazonaws.com/s.cdpn.io/242518/clickUp.mp3'),
+                tituloModal: '',
+                descripModal: '',
+                checked: false,
+                maquina: false,
+                cont: 0,
+                ganador: null,
+            }),
+            watch: {
+                // whenever question changes, this function will run
+                checked: function (newEstado, oldEstado) {
+                    console.log('cambio de estado ', oldEstado, ' a ', newEstado)
+                    if (newEstado) {
+                        this.playMachine(false, newEstado)
+                    }
+                    return newEstado
                 }
+            },
+            methods: {
+                play(key) {
+                    if (!this.values[key]) {
+                        if (this.current === 'X') {
+                            this.values[key] = 'https://estaticos.muyinteresante.es/media/cache/1140x_thumb/uploads/images/gallery/59c4f5655bafe82c692a7052/gato-marron_0.jpg'
+                        } else {
+                            this.values[key] = 'https://i.pinimg.com/originals/e8/a9/ce/e8a9ce9ab3f3c5ef298a14514047647e.jpg'
+                        }
+                        /* this.values[key] = this.current */
+                        this.current = (this.current === 'X' ? 'O' : 'X')
+                        this.cont = this.cont + 1
+                        console.log(this.cont)
+                    }
+                    this.audio2.load()
+                    this.audio2.play()
+                    this.ganador = this.triki(key, this.values)
+                    if (this.ganador) {
+                        this.toggleModal()
+                    } else if (this.cont === 9) {
+                        this.toggleModal()
+                    }
+                },
+                reset() {
+                    for (const value in this.values) {
+                        this.values[value] = ''
+                    }
+                    this.cont = 0
+                    this.maquina = false
+                    document.getElementById("checkMachine").checked = false
+                    this.current = 'X'
+                },
+                triki(posicion, v) {
+                    if (v[1] === v[2] && v[2] === v[3] && v[3] != '') {
+                        return true
+                    } else if (v[4] === v[5] && v[5] === v[6] && v[6] != '') {
+                        return true
+                    } else if (v[7] === v[8] && v[8] === v[9] && v[9] != '') {
+                        return true
+                    } else if (v[1] === v[4] && v[4] === v[7] && v[7] != '') {
+                        return true
+                    } else if (v[2] === v[5] && v[5] === v[8] && v[8] != '') {
+                        return true
+                    } else if (v[3] === v[6] && v[6] === v[9] && v[9] != '') {
+                        return true
+                    } else if (v[1] === v[5] && v[5] === v[9] && v[9] != '') {
+                        return true
+                    } else if (v[3] === v[5] && v[5] === v[7] && v[7] != '') {
+                        return true
+                    } else {
+                        return false
+                    }
+                },
+                toggleModal() {
+                    if (this.cont <= 9 && this.ganador) {
+                        console.log('entre aqui', this.cont)
+                        this.tituloModal = 'Felicitaciones!'
+                        this.descripModal = 'Has ganado la partida. ¿Te gustaría seguir jugando?'
+                    } else if (this.cont === 9 && !this.ganador) {
+                        console.log('entre aqui 22')
+                        this.tituloModal = 'Buen Intento!'
+                        this.descripModal = 'Has conseguido un empate. ¿Te gustaría vovler a intentarlo?'
+                    }
+                    this.reset()
+                    this.modal = !this.modal
+                },
+                playMachine(key, checked) {
+                    if (key !== false) {
+                        this.play(key)
+                        if (this.maquina) {
+                            this.checked = true
+                        }
+                    } else if (checked) {
+                        let position = null
+                        let newPosition = ''
+                        do {
+                            position = Math.floor(Math.random() * 10) + 1
+                            newPosition = this.values[position]
+                        } while (newPosition !== '');
+                        this.play(position)
+                        this.checked = false
+                    }
+                },
+                target(event) {
+                    console.log('cambio target estado')
+                    if (event.target.checked) {
+                        this.maquina = true
+                        this.playMachine(false, true)
+                    } else {
+                        this.maquina = false
+                    }
+                },
             }
-        }
-    })
-</script>
+        })
+    </script>
 </body>
+
 </html>
